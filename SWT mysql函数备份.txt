@@ -1,0 +1,48 @@
+delimiter // 
+mysql> 
+mysql> CREATE FUNCTION `getChildList`(rootId varchar(1000),languageCOUNTRY varchar(1000),status varchar(1000)) 
+     RETURNS varchar(1000) 
+     BEGIN 
+		DECLARE sTemp VARCHAR(1000); 
+		DECLARE sTempLocal VARCHAR(1000);
+		DECLARE sTempChd VARCHAR(1000); 
+		DECLARE sTempStatus VARCHAR(1000);
+
+		SET sTemp = '$'; 
+		SET sTempChd =rootId;
+		SET sTempLocal = languageCOUNTRY;
+		SET sTempStatus = status;
+
+		WHILE sTempChd is not null DO 
+			SET sTemp = CONCAT(sTemp,',',sTempChd);
+			SELECT group_concat(distinct(category_id)) INTO sTempChd FROM categories where FIND_IN_SET(parent_id,sTempChd)>0; 
+		END WHILE;
+
+		IF(sTempLocal = 'ALL') THEN
+				IF(UPPER(sTempStatus) = 'DISABLE')THEN
+						REPLACE INTO categories_test SELECT * FROM categories WHERE FIND_IN_SET(category_id,sTemp)>0;
+						REPLACE INTO products_test SELECT * FROM products WHERE FIND_IN_SET(modelseries_id,sTemp)>0;
+						#UPDATE categories SET status = sTempStatus WHERE FIND_IN_SET(category_id,sTemp)>0;
+						#UPDATE products SET status = sTempStatus WHERE FIND_IN_SET(modelseries_id,sTemp)>0;
+				ELSEIF(UPPER(sTempStatus) = 'DELETE')THEN
+						DELETE FROM categories_test WHERE FIND_IN_SET(category_id,sTemp)>0;
+						DELETE FROM products_test WHERE FIND_IN_SET(modelseries_id,sTemp)>0;
+						#DELETE FROM categories WHERE FIND_IN_SET(category_id,sTemp)>0;
+						#DELETE FROM products WHERE FIND_IN_SET(modelseries_id,sTemp)>0;
+				END IF;
+		ELSE
+				IF(UPPER(sTempStatus) = 'DISABLE')THEN
+						REPLACE INTO categories_test SELECT * FROM categories WHERE FIND_IN_SET(category_id,sTemp)>0 AND locale = sTempLocal;
+						#INSERT INTO categories_test SELECT * FROM categories WHERE FIND_IN_SET(category_id,'$,eu_Typeprd-Handy,EU_Categoryprd-tvhc-tv,EU_SubCategoryprd-tvhc-tv-lcd')>0 AND locale = 'fr-FR';
+						REPLACE INTO products_test SELECT * FROM products WHERE FIND_IN_SET(modelseries_id,sTemp)>0 AND locale = sTempLocal;
+						#UPDATE categories SET status = 'active' WHERE (FIND_IN_SET(category_id,sTemp)>0 AND locale = sTempLocal);
+						#UPDATE products SET status = 'active' WHERE (FIND_IN_SET(modelseries_id,sTemp)>0 AND locale = sTempLocal);
+				ELSEIF(UPPER(sTempStatus) = 'DELETE')THEN
+						DELETE FROM categories_test WHERE FIND_IN_SET(category_id,sTemp)>0 AND locale = sTempLocal;
+						DELETE FROM products_test WHERE FIND_IN_SET(modelseries_id,sTemp)>0 AND locale = sTempLocal;
+				END IF;
+		END IF;
+ 	   
+		RETURN sTemp; 
+END
+     // 
